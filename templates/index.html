@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ArchiScrapping — Architect Jobs in Germany</title>
+    <meta name="description" content="Aggregated architect job listings across Germany from LinkedIn, Indeed, Glassdoor, and more.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+</head>
+<body>
+    <!-- ═══ Header ═══ -->
+    <header id="app-header">
+        <div class="header-content">
+            <div class="logo-group">
+                <div class="logo-icon">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M3 21h18"/>
+                        <path d="M5 21V7l7-4 7 4v14"/>
+                        <path d="M9 21v-6h6v6"/>
+                    </svg>
+                </div>
+                <div>
+                    <h1 class="logo-text">ArchiScrapping</h1>
+                    <p class="logo-subtitle">Architect Jobs · Germany</p>
+                </div>
+            </div>
+            <div class="header-actions">
+                <div class="scrape-status" id="scrape-status">
+                    <span class="status-dot"></span>
+                    <span class="status-text">Loading…</span>
+                </div>
+                <button class="btn btn-secondary" id="btn-telegram" onclick="testTelegram()" title="Test Telegram Notification">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.2.2 0 00-.05-.18c-.06-.05-.14-.03-.21-.02-.09.02-1.49.95-4.22 2.79-.4.27-.76.41-1.08.4-.36-.01-1.04-.2-1.55-.37-.63-.2-1.12-.31-1.08-.66.02-.18.27-.36.74-.55 2.92-1.27 4.86-2.11 5.83-2.52 2.77-1.16 3.35-1.36 3.73-1.36.08 0 .27.02.39.12.1.08.13.19.14.27-.01.06.01.24 0 .38z"/></svg>
+                    <span id="telegram-btn-text">Telegram Alert</span>
+                </button>
+                <button class="btn btn-primary" id="btn-scrape" onclick="triggerScrape()">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 11-6.219-8.56"/><polyline points="21 3 21 9 15 9"/></svg>
+                    Scrape Now
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main id="app-main">
+        <!-- ═══ Stats Cards ═══ -->
+        <section class="stats-grid" id="stats-section">
+            <div class="stat-card" id="stat-total">
+                <div class="stat-icon stat-icon--blue">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2"/></svg>
+                </div>
+                <div class="stat-info">
+                    <span class="stat-value" id="stat-total-value">—</span>
+                    <span class="stat-label">Total Jobs</span>
+                </div>
+            </div>
+            <div class="stat-card" id="stat-cities">
+                <div class="stat-icon stat-icon--emerald">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                </div>
+                <div class="stat-info">
+                    <span class="stat-value" id="stat-cities-value">—</span>
+                    <span class="stat-label">Cities</span>
+                </div>
+            </div>
+            <div class="stat-card" id="stat-salary">
+                <div class="stat-icon stat-icon--amber">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+                </div>
+                <div class="stat-info">
+                    <span class="stat-value" id="stat-salary-value">—</span>
+                    <span class="stat-label">Avg. Salary</span>
+                </div>
+            </div>
+            <div class="stat-card" id="stat-multi">
+                <div class="stat-icon stat-icon--purple">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="8" height="8" rx="1"/><rect x="14" y="2" width="8" height="8" rx="1"/><rect x="2" y="14" width="8" height="8" rx="1"/><rect x="14" y="14" width="8" height="8" rx="1"/></svg>
+                </div>
+                <div class="stat-info">
+                    <span class="stat-value" id="stat-multi-value">—</span>
+                    <span class="stat-label">Multi-Source</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- ═══ Charts ═══ -->
+        <section class="charts-grid" id="charts-section">
+            <div class="chart-card">
+                <h3 class="chart-title">Jobs by City</h3>
+                <div class="chart-container">
+                    <canvas id="chart-cities"></canvas>
+                </div>
+            </div>
+            <div class="chart-card">
+                <h3 class="chart-title">Jobs by Source</h3>
+                <div class="chart-container chart-container--small">
+                    <canvas id="chart-sources"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <!-- ═══ Filters ═══ -->
+        <section class="filters-bar" id="filters-section">
+            <div class="filter-group">
+                <div class="search-input-wrapper">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                    <input type="text" id="filter-search" class="filter-input" placeholder="Search jobs, companies…">
+                </div>
+            </div>
+            <div class="filter-group">
+                <select id="filter-city" class="filter-select">
+                    <option value="">All Cities</option>
+                </select>
+                <select id="filter-source" class="filter-select">
+                    <option value="">All Sources</option>
+                </select>
+                <select id="filter-type" class="filter-select">
+                    <option value="">All Types</option>
+                </select>
+                <select id="filter-sort" class="filter-select">
+                    <option value="newest">Newest First</option>
+                    <option value="salary_high">Highest Salary</option>
+                    <option value="salary_low">Lowest Salary</option>
+                    <option value="sources">Most Sources</option>
+                </select>
+                <label class="filter-checkbox">
+                    <input type="checkbox" id="filter-salary">
+                    <span>Has Salary</span>
+                </label>
+            </div>
+        </section>
+
+        <!-- ═══ Job Results ═══ -->
+        <section class="jobs-section" id="jobs-section">
+            <div class="jobs-header">
+                <h2 class="jobs-title" id="jobs-count-label">Loading jobs…</h2>
+                <div class="pagination" id="pagination-top"></div>
+            </div>
+
+            <div class="jobs-grid" id="jobs-grid">
+                <!-- Job cards inserted by JS -->
+                <div class="loading-state" id="loading-state">
+                    <div class="spinner"></div>
+                    <p>Fetching architect jobs across Germany…</p>
+                </div>
+            </div>
+
+            <div class="pagination-bottom" id="pagination-bottom"></div>
+        </section>
+    </main>
+
+    <!-- ═══ Job Detail Modal ═══ -->
+    <div class="modal-overlay" id="job-modal" onclick="closeModal(event)">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <button class="modal-close" onclick="closeModal()">&times;</button>
+            <div id="modal-body"></div>
+        </div>
+    </div>
+
+    <footer id="app-footer">
+        <p>ArchiScrapping — Aggregating architect opportunities across Germany</p>
+        <p class="footer-sub">Data sourced from LinkedIn, Indeed, Glassdoor, Google Jobs & ZipRecruiter</p>
+    </footer>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>
