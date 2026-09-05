@@ -10,3 +10,4 @@ aiofiles>=23.0.0
 python-dotenv>=1.0.0
 thefuzz[speedup]>=0.20.0
 requests>=2.31.0
+beautifulsoup4>=4.12.0

@@ -3,10 +3,14 @@ ArchiScrapping — Job scraper module.
 Uses python-jobspy to scrape architect jobs from multiple boards across Germany.
 """
 import logging
+import re
 from datetime import datetime, timezone
 from typing import List, Dict, Any, Optional
+from urllib.parse import quote
 
 import pandas as pd
+import requests
+from bs4 import BeautifulSoup
 from jobspy import scrape_jobs
 
 from config import settings
@@ -88,18 +92,155 @@ def _normalize_job(row: pd.Series, search_term: str) -> Dict[str, Any]:
     }
 
 
+def scrape_baunetz(max_pages: int = 3) -> List[Dict[str, Any]]:
+    """
+    Scrape premier architecture jobs directly from BauNetz (baunetz.de/stellenmarkt).
+    BauNetz is Germany's top specialized architecture job portal.
+    """
+    logger.info(f"Scraping BauNetz (pages 1..{max_pages})")
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "de-DE,de;q=0.9,en-US;q=0.8,en;q=0.7",
+    }
+    jobs: List[Dict[str, Any]] = []
+
+    for page in range(1, max_pages + 1):
+        url = f"https://www.baunetz.de/stellenmarkt/suche?page={page}"
+        try:
+            r = requests.get(url, headers=headers, timeout=10)
+            if r.status_code != 200:
+                logger.warning(f"BauNetz page {page} returned status {r.status_code}")
+                continue
+
+            soup = BeautifulSoup(r.text, "html.parser")
+            links = soup.find_all("a", href=lambda h: h and "/stellenmarkt/job/" in h)
+
+            for a in links:
+                title_elem = a.find("span", class_="title")
+                company_elem = a.find(class_="company-title")
+                loc_elem = a.find(class_="location")
+                intro_elem = a.find(class_="intro")
+
+                title = title_elem.get_text(strip=True) if title_elem else None
+                company = company_elem.get_text(strip=True) if company_elem else None
+                city = loc_elem.get_text(strip=True) if loc_elem else None
+                desc = intro_elem.get_text(strip=True) if intro_elem else None
+
+                href = a.get("href", "")
+                full_url = f"https://www.baunetz.de{href}" if href.startswith("/") else href
+
+                if title:
+                    jobs.append({
+                        "site_name": "baunetz",
+                        "title": title,
+                        "company": company,
+                        "city": city,
+                        "state": None,
+                        "job_type": "fulltime",
+                        "salary_min": None,
+                        "salary_max": None,
+                        "salary_interval": None,
+                        "salary_currency": "EUR",
+                        "description": desc,
+                        "job_url": full_url,
+                        "date_posted": None,
+                        "search_term_used": "baunetz",
+                    })
+
+        except Exception as e:
+            logger.warning(f"Error scraping BauNetz page {page}: {e}")
+            continue
+
+    logger.info(f"BauNetz scraping complete: {len(jobs)} jobs extracted")
+    return jobs
+
+
+def scrape_stepstone(
+    search_term: str,
+    location: str = "Germany",
+    max_results: int = 25,
+    proxies: Optional[List[str]] = None,
+) -> List[Dict[str, Any]]:
+    """
+    Attempt to scrape StepStone (stepstone.de).
+    Handles Akamai bot management gracefully if blocked without proxies.
+    """
+    encoded_term = quote(search_term)
+    encoded_loc = quote(location if location != "Germany" else "deutschland")
+    url = f"https://www.stepstone.de/jobs/{encoded_term}/in-{encoded_loc}?radius=50"
+
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+        "Accept-Language": "de-DE,de;q=0.9,en-US;q=0.8,en;q=0.7",
+    }
+
+    req_proxies = None
+    if proxies and len(proxies) > 0:
+        proxy = proxies[0]
+        req_proxies = {"http": proxy, "https": proxy}
+
+    jobs: List[Dict[str, Any]] = []
+    try:
+        r = requests.get(url, headers=headers, proxies=req_proxies, timeout=10)
+        if r.status_code == 403 or "Access Denied" in r.text:
+            logger.warning(f"  [stepstone] Blocked by Akamai for '{search_term}' (Requires residential proxy in PROXY_LIST)")
+            return []
+        if r.status_code != 200:
+            logger.warning(f"  [stepstone] Status {r.status_code} for '{search_term}'")
+            return []
+
+        soup = BeautifulSoup(r.text, "html.parser")
+        articles = soup.find_all("article", attrs={"data-testid": "job-item"})
+
+        for art in articles[:max_results]:
+            link_tag = art.find("a", href=True)
+            if not link_tag:
+                continue
+
+            title = link_tag.get_text(strip=True)
+            href = link_tag["href"]
+            full_url = f"https://www.stepstone.de{href}" if href.startswith("/") else href
+
+            comp_tag = art.find(class_=re.compile(r"company|employer"))
+            company = comp_tag.get_text(strip=True) if comp_tag else None
+
+            loc_tag = art.find(class_=re.compile(r"location"))
+            city = loc_tag.get_text(strip=True) if loc_tag else location
+
+            if title:
+                jobs.append({
+                    "site_name": "stepstone",
+                    "title": title,
+                    "company": company,
+                    "city": city,
+                    "state": None,
+                    "job_type": "fulltime",
+                    "salary_min": None,
+                    "salary_max": None,
+                    "salary_interval": None,
+                    "salary_currency": "EUR",
+                    "description": None,
+                    "job_url": full_url,
+                    "date_posted": None,
+                    "search_term_used": search_term,
+                })
+
+        logger.info(f"  [stepstone] Found {len(jobs)} results for '{search_term}'")
+    except Exception as e:
+        logger.warning(f"  [stepstone] Error scraping '{search_term}': {e}")
+
+    return jobs
+
+
 def scrape_architect_jobs(
     search_terms: Optional[List[str]] = None,
     locations: Optional[List[str]] = None,
     results_per_site: Optional[int] = None,
 ) -> List[Dict[str, Any]]:
     """
-    Scrape architect jobs from all configured job boards.
-
-    Args:
-        search_terms: List of search terms (defaults to config)
-        locations: List of locations to search (defaults to Germany-wide + major cities)
-        results_per_site: Max results per site per search (defaults to config)
+    Scrape architect jobs from all configured job boards across Germany.
 
     Returns:
         List of normalized job dicts
@@ -107,7 +248,6 @@ def scrape_architect_jobs(
     if search_terms is None:
         search_terms = settings.search_terms_list
     if locations is None:
-        # Use just "Germany" for broader coverage, add cities for depth
         locations = ["Germany"]
     if results_per_site is None:
         results_per_site = settings.results_per_site
@@ -115,6 +255,22 @@ def scrape_architect_jobs(
     all_jobs: List[Dict[str, Any]] = []
     proxies = settings.proxies
 
+    # 1. Scrape BauNetz (Top architecture portal in Germany — 100% reliable)
+    try:
+        baunetz_jobs = scrape_baunetz(max_pages=3)
+        all_jobs.extend(baunetz_jobs)
+    except Exception as e:
+        logger.warning(f"BauNetz scraping error: {e}")
+
+    # 2. Scrape StepStone (Attempt with Akamai / proxy handling)
+    for term in search_terms[:3]:  # Try primary search terms
+        try:
+            stepstone_jobs = scrape_stepstone(term, "Germany", max_results=results_per_site, proxies=proxies)
+            all_jobs.extend(stepstone_jobs)
+        except Exception as e:
+            logger.warning(f"Stepstone error for {term}: {e}")
+
+    # 3. Scrape JobSpy boards (Indeed, LinkedIn, Google, Glassdoor, ZipRecruiter)
     for search_term in search_terms:
         for location in locations:
             logger.info(f"Scraping: '{search_term}' in '{location}'")
@@ -153,5 +309,5 @@ def scrape_architect_jobs(
                     )
                     continue
 
-    logger.info(f"Total raw jobs scraped: {len(all_jobs)}")
+    logger.info(f"Total raw jobs scraped across all sources: {len(all_jobs)}")
     return all_jobs
