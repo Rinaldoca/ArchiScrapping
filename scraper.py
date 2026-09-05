@@ -118,41 +118,40 @@ def scrape_architect_jobs(
     for search_term in search_terms:
         for location in locations:
             logger.info(f"Scraping: '{search_term}' in '{location}'")
+            google_term = f"{search_term} jobs in {location} since last week"
 
-            try:
-                google_term = f"{search_term} jobs in {location} since last week"
-
-                df = scrape_jobs(
-                    site_name=JOB_BOARDS,
-                    search_term=search_term,
-                    google_search_term=google_term,
-                    location=location,
-                    results_wanted=results_per_site,
-                    hours_old=168,  # last 7 days
-                    country_indeed="Germany",
-                    linkedin_fetch_description=True,
-                    proxies=proxies,
-                )
-
-                if df is not None and not df.empty:
-                    for _, row in df.iterrows():
-                        job = _normalize_job(row, search_term)
-                        if job["title"]:  # skip entries without a title
-                            all_jobs.append(job)
-
-                    logger.info(
-                        f"  Found {len(df)} results for '{search_term}' in '{location}'"
-                    )
-                else:
-                    logger.info(
-                        f"  No results for '{search_term}' in '{location}'"
+            # Scrape board by board so that a 429/403 on one board (e.g. Google Jobs on cloud IPs)
+            # never causes the entire search term or other boards (Indeed, LinkedIn) to be discarded.
+            for board in JOB_BOARDS:
+                try:
+                    df = scrape_jobs(
+                        site_name=[board],
+                        search_term=search_term,
+                        google_search_term=google_term if board == "google" else None,
+                        location=location,
+                        results_wanted=results_per_site,
+                        hours_old=168,  # last 7 days
+                        country_indeed="Germany",
+                        linkedin_fetch_description=True,
+                        proxies=proxies,
                     )
 
-            except Exception as e:
-                logger.warning(
-                    f"  Error scraping '{search_term}' in '{location}': {e}"
-                )
-                continue
+                    if df is not None and not df.empty:
+                        board_jobs_count = 0
+                        for _, row in df.iterrows():
+                            job = _normalize_job(row, search_term)
+                            if job["title"]:
+                                all_jobs.append(job)
+                                board_jobs_count += 1
+
+                        logger.info(
+                            f"  [{board}] Found {board_jobs_count} results for '{search_term}'"
+                        )
+                except Exception as e:
+                    logger.warning(
+                        f"  [{board}] Unavailable for '{search_term}': {e}"
+                    )
+                    continue
 
     logger.info(f"Total raw jobs scraped: {len(all_jobs)}")
     return all_jobs
