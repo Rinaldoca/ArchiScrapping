@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 from contextlib import asynccontextmanager
 from typing import Optional
 
-from fastapi import FastAPI, Depends, Query, Request, BackgroundTasks
+from fastapi import FastAPI, Depends, Query, Request, BackgroundTasks, Header, HTTPException
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -380,6 +380,40 @@ async def trigger_scrape(background_tasks: BackgroundTasks):
         )
     background_tasks.add_task(run_scrape_task)
     return {"status": "ok", "message": "Scrape started in background"}
+
+
+# ─── API: Ingest (push jobs scraped locally, e.g. StepStone from a residential IP) ─
+
+@app.post("/api/jobs/ingest")
+async def ingest_jobs(request: Request, x_api_key: Optional[str] = Header(None)):
+    """Accept jobs scraped by an external/local process and merge them into the DB."""
+    if not settings.ingest_api_key:
+        raise HTTPException(status_code=503, detail="Ingest is not configured")
+    if x_api_key != settings.ingest_api_key:
+        raise HTTPException(status_code=401, detail="Invalid API key")
+
+    payload = await request.json()
+    raw_jobs = payload.get("jobs", [])
+    for job in raw_jobs:
+        date_posted = job.get("date_posted")
+        if isinstance(date_posted, str):
+            try:
+                job["date_posted"] = datetime.fromisoformat(date_posted)
+            except ValueError:
+                job["date_posted"] = None
+
+    db = SessionLocal()
+    try:
+        total, new, updated, new_jobs_list = process_scraped_jobs(db, raw_jobs)
+        if new_jobs_list and is_telegram_configured():
+            try:
+                notify_new_jobs(new_jobs_list)
+            except Exception as notify_err:
+                logger.error(f"Telegram notification error: {notify_err}")
+    finally:
+        db.close()
+
+    return {"status": "ok", "total": total, "new": new, "updated": updated}
 
 
 # ─── API: Scrape Status ──────────────────────────────────────────────────────────

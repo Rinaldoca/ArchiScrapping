@@ -27,6 +27,10 @@ class Settings(BaseSettings):
     search_terms: str = "Architekt,Architect,Architektin,Senior Architekt,Projektleiter Architektur,Bauzeichner,Entwurfsarchitekt"
     proxy_list: str = ""
 
+    # Ingest API — lets a local scraper (e.g. StepStone, run from a residential IP
+    # to dodge Akamai's datacenter block) push jobs into the Railway-hosted DB.
+    ingest_api_key: Optional[str] = None
+
     # App
     app_host: str = "0.0.0.0"
     app_port: int = int(os.environ.get("PORT", "8000"))

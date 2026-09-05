@@ -262,13 +262,14 @@ def scrape_architect_jobs(
     except Exception as e:
         logger.warning(f"BauNetz scraping error: {e}")
 
-    # 2. Scrape StepStone (Attempt with Akamai / proxy handling)
-    for term in search_terms[:3]:  # Try primary search terms
-        try:
-            stepstone_jobs = scrape_stepstone(term, "Germany", max_results=results_per_site, proxies=proxies)
-            all_jobs.extend(stepstone_jobs)
-        except Exception as e:
-            logger.warning(f"Stepstone error for {term}: {e}")
+    # 2. StepStone disabled: Akamai blocks datacenter IPs (Railway) without a paid
+    # residential proxy. Re-enable by uncommenting once PROXY_LIST is configured.
+    # for term in search_terms[:3]:
+    #     try:
+    #         stepstone_jobs = scrape_stepstone(term, "Germany", max_results=results_per_site, proxies=proxies)
+    #         all_jobs.extend(stepstone_jobs)
+    #     except Exception as e:
+    #         logger.warning(f"Stepstone error for {term}: {e}")
 
     # 3. Scrape JobSpy boards (Indeed, LinkedIn, Google, Glassdoor, ZipRecruiter)
     for search_term in search_terms:
