@@ -78,6 +78,7 @@ async function loadJobs() {
 
     try {
         const res = await fetch(`/api/jobs?${params}`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
         state.jobs = data.jobs;
         state.total = data.total;
@@ -87,7 +88,7 @@ async function loadJobs() {
         renderPagination();
     } catch (err) {
         console.error("Failed to load jobs:", err);
-        showEmptyState("Failed to load jobs. Please try again.");
+        showEmptyState("Failed to load jobs. Please try again.", true);
     } finally {
         state.loading = false;
         showLoading(false);
@@ -97,6 +98,7 @@ async function loadJobs() {
 async function loadStats() {
     try {
         const res = await fetch("/api/stats");
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
         state.stats = await res.json();
         renderStats();
         renderCharts();
@@ -108,6 +110,7 @@ async function loadStats() {
 async function loadFilters() {
     try {
         const res = await fetch("/api/filters");
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
         state.filters = await res.json();
         populateFilterDropdowns();
     } catch (err) {
@@ -531,12 +534,13 @@ function showLoading(show) {
     }
 }
 
-function showEmptyState(message) {
+function showEmptyState(message, showRetry) {
     const grid = document.getElementById("jobs-grid");
     grid.innerHTML = `
         <div class="empty-state">
             <h3>Oops!</h3>
             <p>${message}</p>
+            ${showRetry ? `<button class="btn btn-primary" style="margin-top:16px" onclick="loadJobs()">Retry</button>` : ""}
         </div>
     `;
 }

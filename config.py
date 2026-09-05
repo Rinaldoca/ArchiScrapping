@@ -25,11 +25,6 @@ class Settings(BaseSettings):
     scrape_interval_hours: int = 6
     results_per_site: int = 50
     search_terms: str = "Architekt,Architect,Architektin,Senior Architekt,Projektleiter Architektur,Bauzeichner,Entwurfsarchitekt"
-    proxy_list: str = ""
-
-    # Ingest API — lets a local scraper (e.g. StepStone, run from a residential IP
-    # to dodge Akamai's datacenter block) push jobs into the Railway-hosted DB.
-    ingest_api_key: Optional[str] = None
 
     # App
     app_host: str = "0.0.0.0"
@@ -44,13 +39,6 @@ class Settings(BaseSettings):
     def search_terms_list(self) -> List[str]:
         """Parse comma-separated search terms into a list."""
         return [t.strip() for t in self.search_terms.split(",") if t.strip()]
-
-    @property
-    def proxies(self) -> Optional[List[str]]:
-        """Parse comma-separated proxy list."""
-        if not self.proxy_list:
-            return None
-        return [p.strip() for p in self.proxy_list.split(",") if p.strip()]
 
     class Config:
         env_file = ".env"

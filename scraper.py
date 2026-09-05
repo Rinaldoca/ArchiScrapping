@@ -3,14 +3,14 @@ ArchiScrapping — Job scraper module.
 Uses python-jobspy to scrape architect jobs from multiple boards across Germany.
 """
 import logging
-import re
 from datetime import datetime, timezone
 from typing import List, Dict, Any, Optional
-from urllib.parse import quote
 
 import pandas as pd
 import requests
 from bs4 import BeautifulSoup
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 from jobspy import scrape_jobs
 
 from config import settings
@@ -19,6 +19,15 @@ logger = logging.getLogger("archiscrapping.scraper")
 
 # Job boards to scrape
 JOB_BOARDS = ["indeed", "linkedin", "glassdoor", "google", "zip_recruiter"]
+
+
+def _session_with_retries() -> requests.Session:
+    """Session that retries transient network errors (connection resets, 502/503/504)."""
+    session = requests.Session()
+    retry = Retry(total=3, backoff_factor=1, status_forcelist=[500, 502, 503, 504])
+    session.mount("https://", HTTPAdapter(max_retries=retry))
+    session.mount("http://", HTTPAdapter(max_retries=retry))
+    return session
 
 # German cities to search across for better coverage
 GERMAN_LOCATIONS = [
@@ -104,11 +113,12 @@ def scrape_baunetz(max_pages: int = 3) -> List[Dict[str, Any]]:
         "Accept-Language": "de-DE,de;q=0.9,en-US;q=0.8,en;q=0.7",
     }
     jobs: List[Dict[str, Any]] = []
+    session = _session_with_retries()
 
     for page in range(1, max_pages + 1):
         url = f"https://www.baunetz.de/stellenmarkt/suche?page={page}"
         try:
-            r = requests.get(url, headers=headers, timeout=10)
+            r = session.get(url, headers=headers, timeout=10)
             if r.status_code != 200:
                 logger.warning(f"BauNetz page {page} returned status {r.status_code}")
                 continue
@@ -156,84 +166,6 @@ def scrape_baunetz(max_pages: int = 3) -> List[Dict[str, Any]]:
     return jobs
 
 
-def scrape_stepstone(
-    search_term: str,
-    location: str = "Germany",
-    max_results: int = 25,
-    proxies: Optional[List[str]] = None,
-) -> List[Dict[str, Any]]:
-    """
-    Attempt to scrape StepStone (stepstone.de).
-    Handles Akamai bot management gracefully if blocked without proxies.
-    """
-    encoded_term = quote(search_term)
-    encoded_loc = quote(location if location != "Germany" else "deutschland")
-    url = f"https://www.stepstone.de/jobs/{encoded_term}/in-{encoded_loc}?radius=50"
-
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
-        "Accept-Language": "de-DE,de;q=0.9,en-US;q=0.8,en;q=0.7",
-    }
-
-    req_proxies = None
-    if proxies and len(proxies) > 0:
-        proxy = proxies[0]
-        req_proxies = {"http": proxy, "https": proxy}
-
-    jobs: List[Dict[str, Any]] = []
-    try:
-        r = requests.get(url, headers=headers, proxies=req_proxies, timeout=10)
-        if r.status_code == 403 or "Access Denied" in r.text:
-            logger.warning(f"  [stepstone] Blocked by Akamai for '{search_term}' (Requires residential proxy in PROXY_LIST)")
-            return []
-        if r.status_code != 200:
-            logger.warning(f"  [stepstone] Status {r.status_code} for '{search_term}'")
-            return []
-
-        soup = BeautifulSoup(r.text, "html.parser")
-        articles = soup.find_all("article", attrs={"data-testid": "job-item"})
-
-        for art in articles[:max_results]:
-            link_tag = art.find("a", href=True)
-            if not link_tag:
-                continue
-
-            title = link_tag.get_text(strip=True)
-            href = link_tag["href"]
-            full_url = f"https://www.stepstone.de{href}" if href.startswith("/") else href
-
-            comp_tag = art.find(class_=re.compile(r"company|employer"))
-            company = comp_tag.get_text(strip=True) if comp_tag else None
-
-            loc_tag = art.find(class_=re.compile(r"location"))
-            city = loc_tag.get_text(strip=True) if loc_tag else location
-
-            if title:
-                jobs.append({
-                    "site_name": "stepstone",
-                    "title": title,
-                    "company": company,
-                    "city": city,
-                    "state": None,
-                    "job_type": "fulltime",
-                    "salary_min": None,
-                    "salary_max": None,
-                    "salary_interval": None,
-                    "salary_currency": "EUR",
-                    "description": None,
-                    "job_url": full_url,
-                    "date_posted": None,
-                    "search_term_used": search_term,
-                })
-
-        logger.info(f"  [stepstone] Found {len(jobs)} results for '{search_term}'")
-    except Exception as e:
-        logger.warning(f"  [stepstone] Error scraping '{search_term}': {e}")
-
-    return jobs
-
-
 def scrape_architect_jobs(
     search_terms: Optional[List[str]] = None,
     locations: Optional[List[str]] = None,
@@ -253,7 +185,6 @@ def scrape_architect_jobs(
         results_per_site = settings.results_per_site
 
     all_jobs: List[Dict[str, Any]] = []
-    proxies = settings.proxies
 
     # 1. Scrape BauNetz (Top architecture portal in Germany — 100% reliable)
     try:
@@ -262,16 +193,10 @@ def scrape_architect_jobs(
     except Exception as e:
         logger.warning(f"BauNetz scraping error: {e}")
 
-    # 2. StepStone disabled: Akamai blocks datacenter IPs (Railway) without a paid
-    # residential proxy. Re-enable by uncommenting once PROXY_LIST is configured.
-    # for term in search_terms[:3]:
-    #     try:
-    #         stepstone_jobs = scrape_stepstone(term, "Germany", max_results=results_per_site, proxies=proxies)
-    #         all_jobs.extend(stepstone_jobs)
-    #     except Exception as e:
-    #         logger.warning(f"Stepstone error for {term}: {e}")
+    # StepStone dropped: Akamai's JS/TLS challenge blocks even residential IPs
+    # using plain HTTP requests, not just Railway's datacenter IP.
 
-    # 3. Scrape JobSpy boards (Indeed, LinkedIn, Google, Glassdoor, ZipRecruiter)
+    # 2. Scrape JobSpy boards (Indeed, LinkedIn, Google, Glassdoor, ZipRecruiter)
     for search_term in search_terms:
         for location in locations:
             logger.info(f"Scraping: '{search_term}' in '{location}'")
