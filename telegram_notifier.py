@@ -10,6 +10,7 @@ import requests
 
 from config import settings
 from database import Job
+from deduplicator import is_traditional_architect_job
 
 logger = logging.getLogger("archiscrapping.telegram")
 
@@ -116,6 +117,12 @@ def notify_new_jobs(jobs: List[Job]) -> int:
         return 0
 
     if not jobs:
+        return 0
+
+    # Exclude IT/software architecture jobs from Telegram alerts
+    jobs = [j for j in jobs if is_traditional_architect_job(j.title)]
+    if not jobs:
+        logger.debug("No traditional architect jobs in this batch to notify.")
         return 0
 
     logger.info(f"Preparing Telegram alerts for {len(jobs)} new jobs...")

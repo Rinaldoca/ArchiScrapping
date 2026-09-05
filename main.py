@@ -19,7 +19,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from config import settings
 from database import init_db, get_db, SessionLocal, Job, JobSource, ScrapeLog
 from scraper import scrape_architect_jobs
-from deduplicator import process_scraped_jobs
+from deduplicator import process_scraped_jobs, is_traditional_architect_job
 from telegram_notifier import notify_new_jobs, is_telegram_configured, test_telegram_connection
 
 # ─── Logging ─────────────────────────────────────────────────────────────────────
@@ -107,6 +107,17 @@ async def lifespan(app: FastAPI):
     # Run initial scrape only if database has no active jobs
     db = SessionLocal()
     try:
+        # Clean up any legacy IT / software architecture jobs from database
+        all_active = db.query(Job).filter(Job.is_active == True).all()
+        purged = 0
+        for j in all_active:
+            if not is_traditional_architect_job(j.title):
+                db.delete(j)
+                purged += 1
+        if purged > 0:
+            db.commit()
+            logger.info(f"Purged {purged} non-traditional / IT architecture jobs from database")
+
         existing_job = db.query(Job.id).filter(Job.is_active == True).first()
         if not existing_job:
             scheduler.add_job(run_scrape_task, id="initial_scrape")

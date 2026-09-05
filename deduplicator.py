@@ -4,8 +4,9 @@ Matches new scraped jobs against existing DB records using fuzzy matching,
 merges duplicates by adding source entries, and inserts new jobs.
 """
 import logging
+import re
 from datetime import datetime, timezone
-from typing import List, Dict, Any, Tuple
+from typing import List, Dict, Any, Tuple, Optional
 
 from sqlalchemy.orm import Session
 from thefuzz import fuzz
@@ -17,6 +18,86 @@ logger = logging.getLogger("archiscrapping.deduplicator")
 # Fuzzy match threshold (0–100). Higher = stricter matching.
 TITLE_THRESHOLD = 82
 COMPANY_THRESHOLD = 80
+
+# ─── IT Architecture Exclusion Filter ──────────────────────────────────────────
+# Excludes software, cloud, data, security, and IT architecture roles.
+# Ensures only traditional building/interior/landscape/urban architecture is kept.
+
+IT_EXCLUSION_PATTERNS = [
+    r'\bsoftware\b',
+    r'\bcloud\b',
+    r'\bsolution(s)?\b',
+    r'\benterprise\b',
+    r'\bdata\b',
+    r'\bsecurity\b',
+    r'\bcyber\b',
+    r'\bdevops\b',
+    r'\bdevsecops\b',
+    r'\baws\b',
+    r'\bazure\b',
+    r'\bsap\b',
+    r'\bsalesforce\b',
+    r'\bnetwork\b',
+    r'\binfrastructure\b',
+    r'\binfrastruktur\b',
+    r'\bsystem(s)?\s+architect\b',
+    r'\bsystem-architekt\b',
+    r'\bplatform\b',
+    r'\bplattform\b',
+    r'\bfrontend\b',
+    r'\bbackend\b',
+    r'\bfull-?stack\b',
+    r'\bapi\b',
+    r'\bkubernetes\b',
+    r'\bmachine\s+learning\b',
+    r'\bai\s+architect\b',
+    r'\bai\s*[/]?\s*ml\b',
+    r'\biot\b',
+    r'\btest\s+architect\b',
+    r'\bintegration\s+architect\b',
+    r'\bit[-\s]architekt(in)?\b',
+    r'\bit[-\s]architect\b',
+    r'\bit[-\s]projektleiter\b',
+    r'\bit[-\s]infrastruktur\b',
+    r'\bit[-\s]system\b',
+    r'\bit[-\s]consultant\b',
+    r'\bit[-\s]support\b',
+    r'\bdomain\s+architect\b',
+    r'\bbusiness\s+architect(ure)?\b',
+    r'\bcrm\b',
+    r'\berp\b',
+    r'\bjava\b',
+    r'\bpython\b',
+    r'\b\.net\b',
+    r'\bc\+\+\b',
+    r'\bc#\b',
+    r'\bdatabase\b',
+    r'\bdatenbank\b',
+    r'\bdeveloper\b',
+    r'\bentwickler\b',
+    r'\bprogrammer\b',
+    r'\bprogramming\b',
+    r'\bagentops\b',
+    r'\btech\s+architect\b',
+    r'\bdev\b',
+    r'\blaravel\b',
+    r'\bangular\b',
+    r'\breact\b',
+    r'\bvue\b',
+    r'\bnode(\.js)?\b',
+    r'\btypescript\b',
+    r'\bjavascript\b',
+    r'\bmysql\b',
+]
+
+_IT_REGEX = re.compile('|'.join(IT_EXCLUSION_PATTERNS), re.IGNORECASE)
+
+
+def is_traditional_architect_job(title: Optional[str]) -> bool:
+    """Return True if job is for traditional architecture, False if IT/software."""
+    if not title:
+        return False
+    return not bool(_IT_REGEX.search(title))
 
 
 def _normalize_text(text: str) -> str:
@@ -108,6 +189,12 @@ def process_scraped_jobs(
     now = _to_naive(datetime.now(timezone.utc))
 
     for raw_job in scraped_jobs:
+        title = raw_job.get("title", "")
+        # Filter out IT / tech architecture jobs (e.g. Cloud, Software, Solution, Data Architect)
+        if not is_traditional_architect_job(title):
+            logger.debug(f"Skipping IT/tech architecture job: '{title}'")
+            continue
+
         site_name = raw_job.get("site_name", "unknown")
         site_url = raw_job.get("job_url", "")
 
