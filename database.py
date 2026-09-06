@@ -32,6 +32,8 @@ class Job(Base):
     first_seen = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     last_seen = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     is_active = Column(Boolean, default=True)
+    is_favorite = Column(Boolean, default=False, nullable=False, server_default="0")
+    is_contacted = Column(Boolean, default=False, nullable=False, server_default="0")
     search_term_used = Column(String(200), nullable=True)
 
     # Relationship to sources
@@ -94,6 +96,8 @@ class Job(Base):
             "first_seen": self.first_seen.isoformat() if self.first_seen else None,
             "last_seen": self.last_seen.isoformat() if self.last_seen else None,
             "is_active": self.is_active,
+            "is_favorite": self.is_favorite,
+            "is_contacted": self.is_contacted,
             "search_term_used": self.search_term_used,
             "sources": [s.to_dict() for s in self.sources],
             "source_names": self.source_names,
@@ -181,8 +185,24 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
 def init_db():
-    """Create all tables if they don't exist."""
+    """Create all tables if they don't exist, and add any new columns to existing tables."""
     Base.metadata.create_all(bind=engine)
+
+    # create_all only creates missing tables, not missing columns on existing ones —
+    # add new Job columns manually so upgrades don't need a full migration tool.
+    with engine.connect() as conn:
+        existing = {row[1] for row in conn.exec_driver_sql("PRAGMA table_info(jobs)")} \
+            if engine.url.get_backend_name() == "sqlite" else None
+        for col_name, col_type in (("is_favorite", "BOOLEAN"), ("is_contacted", "BOOLEAN")):
+            if existing is not None and col_name in existing:
+                continue
+            try:
+                conn.exec_driver_sql(
+                    f"ALTER TABLE jobs ADD COLUMN {col_name} {col_type} NOT NULL DEFAULT 0"
+                )
+                conn.commit()
+            except Exception:
+                pass  # column already exists (non-sqlite backend without introspection above)
 
 
 def get_db():

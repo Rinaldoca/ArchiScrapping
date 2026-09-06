@@ -215,7 +215,6 @@ def scrape_architect_jobs(
                         hours_old=168,  # last 7 days
                         country_indeed="Germany",
                         linkedin_fetch_description=True,
-                        proxies=proxies,
                     )
 
                     if df is not None and not df.empty:

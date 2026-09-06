@@ -8,10 +8,11 @@ from datetime import datetime, timezone
 from contextlib import asynccontextmanager
 from typing import Optional
 
-from fastapi import FastAPI, Depends, Query, Request, BackgroundTasks
+from fastapi import FastAPI, Depends, Query, Request, BackgroundTasks, HTTPException
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from pydantic import BaseModel
 from sqlalchemy import func, desc
 from sqlalchemy.orm import Session, joinedload
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -166,6 +167,8 @@ async def get_jobs(
     salary_min: Optional[float] = Query(None, description="Minimum salary"),
     job_type: Optional[str] = Query(None, description="Filter by job type"),
     has_salary: Optional[bool] = Query(None, description="Only jobs with salary info"),
+    favorite: Optional[bool] = Query(None, description="Only favorited jobs"),
+    contacted: Optional[bool] = Query(None, description="Only jobs marked as contacted"),
     sort: Optional[str] = Query("newest", description="Sort: newest, salary_high, salary_low, sources"),
     page: int = Query(1, ge=1),
     per_page: int = Query(30, ge=1, le=100),
@@ -202,6 +205,12 @@ async def get_jobs(
             (Job.salary_min.isnot(None)) | (Job.salary_max.isnot(None))
         )
 
+    if favorite:
+        query = query.filter(Job.is_favorite == True)
+
+    if contacted:
+        query = query.filter(Job.is_contacted == True)
+
     # Count total before pagination
     # Use subquery for correct count with joins
     total = query.with_entities(func.count(func.distinct(Job.id))).scalar()
@@ -236,6 +245,25 @@ async def get_jobs(
         "per_page": per_page,
         "total_pages": max(1, (total + per_page - 1) // per_page),
     }
+
+
+class JobStatusUpdate(BaseModel):
+    is_favorite: Optional[bool] = None
+    is_contacted: Optional[bool] = None
+
+
+@app.patch("/api/jobs/{job_id}")
+async def update_job_status(job_id: int, update: JobStatusUpdate, db: Session = Depends(get_db)):
+    """Toggle a job's favorite/contacted flags."""
+    job = db.query(Job).filter(Job.id == job_id).first()
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    if update.is_favorite is not None:
+        job.is_favorite = update.is_favorite
+    if update.is_contacted is not None:
+        job.is_contacted = update.is_contacted
+    db.commit()
+    return job.to_dict()
 
 
 # ─── API: Stats ───────────────────────────────────────────────────────────────────

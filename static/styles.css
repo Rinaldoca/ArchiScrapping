@@ -523,6 +523,48 @@ body {
     min-width: 0;
 }
 
+.job-card-actions {
+    display: flex;
+    gap: 6px;
+    order: -1;
+}
+
+.icon-btn {
+    appearance: none;
+    -webkit-appearance: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-subtle);
+    background: var(--bg-input);
+    color: var(--text-muted);
+    font-family: inherit;
+    font-size: 0.95rem;
+    line-height: 1;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.icon-btn:hover {
+    border-color: var(--border-hover);
+    color: var(--text-primary);
+}
+
+.icon-btn--star.active {
+    background: var(--accent-amber-glow);
+    border-color: rgba(245, 158, 11, 0.4);
+    color: var(--accent-amber);
+}
+
+.icon-btn--contacted.active {
+    background: var(--accent-emerald-glow);
+    border-color: rgba(16, 185, 129, 0.4);
+    color: var(--accent-emerald);
+}
+
 .job-card-title {
     font-size: 1.05rem;
     font-weight: 700;
@@ -811,6 +853,37 @@ body {
 .modal-close:hover {
     background: var(--accent-rose);
     color: white;
+}
+
+.modal-actions {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+    padding-right: 44px;
+    flex-wrap: wrap;
+}
+
+.btn-star, .btn-contacted {
+    background: var(--bg-input);
+    color: var(--text-secondary);
+    border: 1px solid var(--border-subtle);
+}
+
+.btn-star:hover, .btn-contacted:hover {
+    border-color: var(--border-hover);
+    color: var(--text-primary);
+}
+
+.btn-star.active {
+    background: var(--accent-amber-glow);
+    border-color: rgba(245, 158, 11, 0.4);
+    color: var(--accent-amber);
+}
+
+.btn-contacted.active {
+    background: var(--accent-emerald-glow);
+    border-color: rgba(16, 185, 129, 0.4);
+    color: var(--accent-emerald);
 }
 
 .modal-title {

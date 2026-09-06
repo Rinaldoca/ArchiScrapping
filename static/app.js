@@ -41,6 +41,8 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("filter-type").addEventListener("change", applyFilters);
     document.getElementById("filter-sort").addEventListener("change", applyFilters);
     document.getElementById("filter-salary").addEventListener("change", applyFilters);
+    document.getElementById("filter-favorite").addEventListener("change", applyFilters);
+    document.getElementById("filter-contacted").addEventListener("change", applyFilters);
 
     // Keyboard shortcut to close modal
     document.addEventListener("keydown", (e) => {
@@ -66,6 +68,8 @@ async function loadJobs() {
     const jobType = document.getElementById("filter-type").value;
     const sort = document.getElementById("filter-sort").value;
     const hasSalary = document.getElementById("filter-salary").checked;
+    const favorite = document.getElementById("filter-favorite").checked;
+    const contacted = document.getElementById("filter-contacted").checked;
 
     if (search) params.set("search", search);
     if (city) params.set("city", city);
@@ -73,6 +77,8 @@ async function loadJobs() {
     if (jobType) params.set("job_type", jobType);
     if (sort) params.set("sort", sort);
     if (hasSalary) params.set("has_salary", "true");
+    if (favorite) params.set("favorite", "true");
+    if (contacted) params.set("contacted", "true");
     params.set("page", state.currentPage);
     params.set("per_page", 30);
 
@@ -324,6 +330,10 @@ function renderJobCard(job, index) {
     return `
         <article class="job-card" style="animation-delay: ${delay}ms" onclick="openJobModal(${index})" tabindex="0" role="button" aria-label="View details for ${escapeHtml(job.title)}">
             <div class="job-card-main">
+                <div class="job-card-actions">
+                    <span class="icon-btn icon-btn--star ${job.is_favorite ? "active" : ""}" role="button" tabindex="0" onclick="event.stopPropagation(); toggleFavorite(${index})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();event.stopPropagation();toggleFavorite(${index});}" title="${job.is_favorite ? "Remove from favorites" : "Add to favorites"}">${job.is_favorite ? "★" : "☆"}</span>
+                    <span class="icon-btn icon-btn--contacted ${job.is_contacted ? "active" : ""}" role="button" tabindex="0" onclick="event.stopPropagation(); toggleContacted(${index})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();event.stopPropagation();toggleContacted(${index});}" title="${job.is_contacted ? "Mark as not contacted" : "Mark as already in touch"}">✓</span>
+                </div>
                 <div class="job-card-title">${escapeHtml(job.title)}</div>
                 <div class="job-card-company">${escapeHtml(job.company || "Unknown Company")}</div>
                 <div class="job-card-meta">
@@ -352,6 +362,34 @@ function renderJobCard(job, index) {
             </div>
         </article>
     `;
+}
+
+async function updateJobStatus(index, patch) {
+    const job = state.jobs[index];
+    if (!job) return;
+    try {
+        const res = await fetch(`/api/jobs/${job.id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(patch),
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        Object.assign(job, patch);
+        renderJobs();
+        if (document.getElementById("job-modal").classList.contains("active")) {
+            openJobModal(index);
+        }
+    } catch (err) {
+        console.error("Failed to update job status:", err);
+    }
+}
+
+function toggleFavorite(index) {
+    updateJobStatus(index, { is_favorite: !state.jobs[index].is_favorite });
+}
+
+function toggleContacted(index) {
+    updateJobStatus(index, { is_contacted: !state.jobs[index].is_contacted });
 }
 
 function renderPagination() {
@@ -459,6 +497,10 @@ function openJobModal(index) {
         : "No description available.";
 
     body.innerHTML = `
+        <div class="modal-actions">
+            <span class="btn ${job.is_favorite ? "btn-star active" : "btn-star"}" role="button" tabindex="0" onclick="toggleFavorite(${index})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleFavorite(${index});}">${job.is_favorite ? "★ Favorited" : "☆ Add to Favorites"}</span>
+            <span class="btn ${job.is_contacted ? "btn-contacted active" : "btn-contacted"}" role="button" tabindex="0" onclick="toggleContacted(${index})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleContacted(${index});}">${job.is_contacted ? "✓ Already in Touch" : "Mark as In Touch"}</span>
+        </div>
         <h2 class="modal-title">${escapeHtml(job.title)}</h2>
         <p class="modal-company">${escapeHtml(job.company || "Unknown Company")}</p>
 
