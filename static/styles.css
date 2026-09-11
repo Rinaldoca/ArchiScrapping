@@ -549,8 +549,8 @@ body {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 28px;
-    height: 28px;
+    width: 32px;
+    height: 32px;
     border-radius: var(--radius-sm);
     border: 1px solid var(--border-subtle);
     background: var(--bg-input);
@@ -1141,6 +1141,16 @@ body {
     .job-card {
         grid-template-columns: 1fr;
         padding: 18px;
+    }
+
+    .job-card-actions {
+        gap: 10px;
+    }
+
+    .icon-btn {
+        width: 44px;
+        height: 44px;
+        font-size: 1.1rem;
     }
 
     .job-card-right {
