@@ -1113,6 +1113,18 @@ body {
         font-size: 1.4rem;
     }
 
+    .chart-card {
+        padding: 16px;
+    }
+
+    .chart-container {
+        height: 200px;
+    }
+
+    .chart-container--small {
+        height: 180px;
+    }
+
     .search-input-wrapper {
         min-width: 100%;
     }
@@ -1154,12 +1166,34 @@ body {
 }
 
 @media (max-width: 480px) {
-    .stats-grid {
-        grid-template-columns: 1fr;
+    .stat-card {
+        padding: 14px;
+        gap: 12px;
     }
 
     .stat-icon {
-        width: 44px;
-        height: 44px;
+        width: 40px;
+        height: 40px;
+    }
+
+    .stat-value {
+        font-size: 1.15rem;
+    }
+
+    .stat-label {
+        font-size: 0.72rem;
+    }
+
+    .modal-actions {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .modal-actions .btn {
+        padding: 8px 10px;
+        font-size: 0.78rem;
+        white-space: normal;
+        justify-content: center;
+        text-align: center;
     }
 }
