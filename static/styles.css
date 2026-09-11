@@ -362,6 +362,18 @@ body {
     flex-wrap: wrap;
 }
 
+.filter-selects {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.filter-toggles {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
 .search-input-wrapper {
     position: relative;
     flex: 1;
@@ -414,7 +426,8 @@ body {
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%2394a3b8' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10l-5 5z'/%3E%3C/svg%3E");
     background-repeat: no-repeat;
     background-position: right 12px center;
-    min-width: 140px;
+    flex: 1 1 150px;
+    min-width: 130px;
 }
 
 .filter-select:focus {
@@ -431,13 +444,14 @@ body {
 .filter-checkbox {
     display: flex;
     align-items: center;
-    gap: 8px;
-    padding: 10px 16px;
+    flex: 0 0 auto;
+    gap: 6px;
+    padding: 8px 12px;
     background: var(--bg-input);
     border: 1px solid var(--border-subtle);
     border-radius: var(--radius-sm);
     cursor: pointer;
-    font-size: 0.85rem;
+    font-size: 0.8rem;
     color: var(--text-secondary);
     transition: all var(--transition-fast);
     white-space: nowrap;
@@ -1070,6 +1084,11 @@ body {
         --container-padding: 16px;
     }
 
+    .filters-bar {
+        padding: 14px 16px;
+        gap: 10px;
+    }
+
     .header-content {
         flex-direction: column;
         gap: 12px;
@@ -1094,16 +1113,17 @@ body {
         font-size: 1.4rem;
     }
 
-    .filter-group {
-        flex-direction: column;
-    }
-
     .search-input-wrapper {
         min-width: 100%;
     }
 
     .filter-select {
-        width: 100%;
+        flex: 1 1 calc(50% - 5px);
+    }
+
+    .filter-checkbox {
+        flex: 1 1 calc(50% - 4px);
+        justify-content: center;
     }
 
     .job-card {
