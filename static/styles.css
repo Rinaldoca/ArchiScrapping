@@ -344,10 +344,7 @@ body {
 
 /* ─── Filters ───────────────────────────────────────────────────────────────── */
 .filters-bar {
-    display: flex;
-    flex-direction: column;
-    gap: 14px;
-    padding: 20px 24px;
+    padding: 16px 24px;
     background: var(--bg-card);
     backdrop-filter: blur(12px);
     border: 1px solid var(--border-subtle);
@@ -355,29 +352,17 @@ body {
     margin-bottom: 28px;
 }
 
-.filter-group {
+.filters-row {
     display: flex;
     align-items: center;
-    gap: 12px;
-    flex-wrap: wrap;
-}
-
-.filter-selects {
-    display: flex;
     flex-wrap: wrap;
     gap: 10px;
 }
 
-.filter-toggles {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-}
-
 .search-input-wrapper {
     position: relative;
-    flex: 1;
-    min-width: 250px;
+    flex: 0 1 260px;
+    min-width: 200px;
 }
 
 .search-input-wrapper svg {
@@ -426,7 +411,7 @@ body {
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%2394a3b8' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10l-5 5z'/%3E%3C/svg%3E");
     background-repeat: no-repeat;
     background-position: right 12px center;
-    flex: 1 1 150px;
+    flex: 0 1 150px;
     min-width: 130px;
 }
 
@@ -1134,7 +1119,7 @@ body {
     }
 
     .filter-checkbox {
-        flex: 1 1 calc(50% - 4px);
+        flex: 1 1 calc(50% - 5px);
         justify-content: center;
     }
 
