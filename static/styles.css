@@ -1147,6 +1147,13 @@ body {
         gap: 10px;
     }
 
+    .job-card-title {
+        white-space: normal;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+    }
+
     .icon-btn {
         width: 44px;
         height: 44px;
