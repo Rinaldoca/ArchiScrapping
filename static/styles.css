@@ -1169,6 +1169,17 @@ body {
         align-items: flex-start;
     }
 
+    .pagination, .pagination-bottom {
+        max-width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        padding-bottom: 4px;
+    }
+
+    .page-btn {
+        flex-shrink: 0;
+    }
+
     .modal-content {
         padding: 24px;
         max-height: 90vh;
