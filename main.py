@@ -169,6 +169,7 @@ async def get_jobs(
     has_salary: Optional[bool] = Query(None, description="Only jobs with salary info"),
     favorite: Optional[bool] = Query(None, description="Only favorited jobs"),
     contacted: Optional[bool] = Query(None, description="Only jobs marked as contacted"),
+    blocked: Optional[bool] = Query(None, description="Show only blocked jobs instead of hiding them"),
     sort: Optional[str] = Query("newest", description="Sort: newest, salary_high, salary_low, sources"),
     page: int = Query(1, ge=1),
     per_page: int = Query(30, ge=1, le=100),
@@ -211,6 +212,9 @@ async def get_jobs(
     if contacted:
         query = query.filter(Job.is_contacted == True)
 
+    # Blocked jobs are hidden from the normal view; pass blocked=true to review them
+    query = query.filter(Job.is_blocked == (True if blocked else False))
+
     # Count total before pagination
     # Use subquery for correct count with joins
     total = query.with_entities(func.count(func.distinct(Job.id))).scalar()
@@ -250,6 +254,7 @@ async def get_jobs(
 class JobStatusUpdate(BaseModel):
     is_favorite: Optional[bool] = None
     is_contacted: Optional[bool] = None
+    is_blocked: Optional[bool] = None
 
 
 @app.patch("/api/jobs/{job_id}")
@@ -262,6 +267,8 @@ async def update_job_status(job_id: int, update: JobStatusUpdate, db: Session = 
         job.is_favorite = update.is_favorite
     if update.is_contacted is not None:
         job.is_contacted = update.is_contacted
+    if update.is_blocked is not None:
+        job.is_blocked = update.is_blocked
     db.commit()
     return job.to_dict()
 

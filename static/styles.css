@@ -565,6 +565,12 @@ body {
     color: var(--accent-emerald);
 }
 
+.icon-btn--block.active {
+    background: var(--accent-rose-glow);
+    border-color: rgba(244, 63, 94, 0.4);
+    color: var(--accent-rose);
+}
+
 .job-card-title {
     font-size: 1.05rem;
     font-weight: 700;
@@ -863,13 +869,13 @@ body {
     flex-wrap: wrap;
 }
 
-.btn-star, .btn-contacted {
+.btn-star, .btn-contacted, .btn-block {
     background: var(--bg-input);
     color: var(--text-secondary);
     border: 1px solid var(--border-subtle);
 }
 
-.btn-star:hover, .btn-contacted:hover {
+.btn-star:hover, .btn-contacted:hover, .btn-block:hover {
     border-color: var(--border-hover);
     color: var(--text-primary);
 }
@@ -884,6 +890,12 @@ body {
     background: var(--accent-emerald-glow);
     border-color: rgba(16, 185, 129, 0.4);
     color: var(--accent-emerald);
+}
+
+.btn-block.active {
+    background: var(--accent-rose-glow);
+    border-color: rgba(244, 63, 94, 0.4);
+    color: var(--accent-rose);
 }
 
 .modal-title {

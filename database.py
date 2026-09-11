@@ -34,6 +34,7 @@ class Job(Base):
     is_active = Column(Boolean, default=True)
     is_favorite = Column(Boolean, default=False, nullable=False, server_default="0")
     is_contacted = Column(Boolean, default=False, nullable=False, server_default="0")
+    is_blocked = Column(Boolean, default=False, nullable=False, server_default="0")
     search_term_used = Column(String(200), nullable=True)
 
     # Relationship to sources
@@ -98,6 +99,7 @@ class Job(Base):
             "is_active": self.is_active,
             "is_favorite": self.is_favorite,
             "is_contacted": self.is_contacted,
+            "is_blocked": self.is_blocked,
             "search_term_used": self.search_term_used,
             "sources": [s.to_dict() for s in self.sources],
             "source_names": self.source_names,
@@ -193,7 +195,7 @@ def init_db():
     with engine.connect() as conn:
         existing = {row[1] for row in conn.exec_driver_sql("PRAGMA table_info(jobs)")} \
             if engine.url.get_backend_name() == "sqlite" else None
-        for col_name, col_type in (("is_favorite", "BOOLEAN"), ("is_contacted", "BOOLEAN")):
+        for col_name, col_type in (("is_favorite", "BOOLEAN"), ("is_contacted", "BOOLEAN"), ("is_blocked", "BOOLEAN")):
             if existing is not None and col_name in existing:
                 continue
             try:
